@@ -21,15 +21,16 @@ interface Mission {
   difficulty: string;
   enemies: number;
   reward: number;
+  map: 'beach' | 'city' | 'warzone';
 }
 
 const missions: Mission[] = [
-  { id: 1, name: 'Первая кровь', description: 'Ваше первое задание - зачистить вражескую базу', difficulty: 'Легко', enemies: 5, reward: 500 },
-  { id: 2, name: 'Операция "Буря"', description: 'Штурм укрепленной позиции противника', difficulty: 'Легко', enemies: 8, reward: 800 },
-  { id: 3, name: 'Защита конвоя', description: 'Защитите союзный конвой от атаки', difficulty: 'Средне', enemies: 12, reward: 1200 },
-  { id: 4, name: 'Ночной рейд', description: 'Скрытая операция в темноте', difficulty: 'Средне', enemies: 15, reward: 1500 },
-  { id: 5, name: 'Битва за город', description: 'Масштабное сражение в руинах города', difficulty: 'Сложно', enemies: 20, reward: 2500 },
-  { id: 6, name: 'Последний бой', description: 'Финальная операция - остановите врага', difficulty: 'Очень сложно', enemies: 30, reward: 5000 },
+  { id: 1, name: 'Первая кровь', description: 'Ваше первое задание - зачистить вражескую базу', difficulty: 'Легко', enemies: 5, reward: 500, map: 'beach' },
+  { id: 2, name: 'Операция "Буря"', description: 'Штурм укрепленной позиции противника', difficulty: 'Легко', enemies: 8, reward: 800, map: 'beach' },
+  { id: 3, name: 'Защита конвоя', description: 'Защитите союзный конвой от атаки', difficulty: 'Средне', enemies: 12, reward: 1200, map: 'city' },
+  { id: 4, name: 'Ночной рейд', description: 'Скрытая операция в темноте', difficulty: 'Средне', enemies: 15, reward: 1500, map: 'city' },
+  { id: 5, name: 'Битва за город', description: 'Масштабное сражение в руинах города', difficulty: 'Сложно', enemies: 20, reward: 2500, map: 'warzone' },
+  { id: 6, name: 'Последний бой', description: 'Финальная операция - остановите врага', difficulty: 'Очень сложно', enemies: 30, reward: 5000, map: 'warzone' },
 ];
 
 interface Enemy {
@@ -57,6 +58,7 @@ export default function GameScreen({ user, missionId, onBack, onStartMission, re
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [bombCooldown, setBombCooldown] = useState(0);
   const [score, setScore] = useState(0);
+  const [lastClickTime, setLastClickTime] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
@@ -135,15 +137,74 @@ export default function GameScreen({ user, missionId, onBack, onStartMission, re
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.fillStyle = '#1A1F2C';
-    ctx.fillRect(0, 0, 800, 600);
+    const mapColors = {
+      beach: { bg: '#F4E4C1', ground: '#C19A6B', sky: '#87CEEB' },
+      city: { bg: '#808080', ground: '#505050', sky: '#B0C4DE' },
+      warzone: { bg: '#2C2416', ground: '#1A1410', sky: '#4A4A4A' },
+    };
+    
+    const colors = currentMission ? mapColors[currentMission.map] : mapColors.beach;
+    
+    ctx.fillStyle = colors.sky;
+    ctx.fillRect(0, 0, 800, 300);
+    
+    ctx.fillStyle = colors.ground;
+    ctx.fillRect(0, 300, 800, 300);
+    
+    if (currentMission?.map === 'city') {
+      ctx.fillStyle = '#696969';
+      for (let i = 0; i < 5; i++) {
+        const x = i * 180 + 50;
+        ctx.fillRect(x, 150, 80, 150);
+        ctx.fillStyle = '#FFD700';
+        for (let j = 0; j < 3; j++) {
+          for (let k = 0; k < 2; k++) {
+            ctx.fillRect(x + 15 + k * 35, 170 + j * 40, 15, 20);
+          }
+        }
+        ctx.fillStyle = '#696969';
+      }
+    } else if (currentMission?.map === 'warzone') {
+      ctx.fillStyle = '#696969';
+      for (let i = 0; i < 5; i++) {
+        const x = i * 180 + 50;
+        ctx.fillRect(x, 150, 80, 150);
+      }
+      ctx.fillStyle = '#FF6347';
+      for (let i = 0; i < 8; i++) {
+        const ex = Math.random() * 800;
+        const ey = Math.random() * 200;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 20, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#2F4F4F';
+      ctx.globalAlpha = 0.6;
+      ctx.fillRect(0, 0, 800, 600);
+      ctx.globalAlpha = 1;
+    } else if (currentMission?.map === 'beach') {
+      ctx.fillStyle = '#228B22';
+      for (let i = 0; i < 6; i++) {
+        const x = i * 150 + 30;
+        ctx.fillRect(x + 15, 250, 10, 40);
+        ctx.fillStyle = '#32CD32';
+        ctx.beginPath();
+        ctx.arc(x + 20, 240, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#228B22';
+      }
+    }
 
     ctx.fillStyle = '#8B5CF6';
     ctx.fillRect(playerX - 15, playerY - 15, 30, 30);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(playerX - 8, playerY - 5, 6, 10);
 
     enemies.forEach(enemy => {
       ctx.fillStyle = '#F97316';
       ctx.fillRect(enemy.x - 15, enemy.y - 15, 30, 30);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(enemy.x - 8, enemy.y - 5, 6, 10);
       
       ctx.fillStyle = '#0EA5E9';
       ctx.fillRect(enemy.x - 15, enemy.y - 25, 30 * (enemy.health / enemy.maxHealth), 5);
@@ -153,7 +214,7 @@ export default function GameScreen({ user, missionId, onBack, onStartMission, re
       ctx.fillStyle = '#FFFF00';
       ctx.fillRect(bullet.x - 3, bullet.y - 3, 6, 6);
     });
-  }, [playerX, playerY, enemies, bullets, gameState]);
+  }, [playerX, playerY, enemies, bullets, gameState, currentMission]);
 
   useEffect(() => {
     if (gameState === 'victory' && currentMission) {
@@ -352,64 +413,96 @@ export default function GameScreen({ user, missionId, onBack, onStartMission, re
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4">
-          <Card className="flex-1">
-            <CardContent className="p-4">
+        <div className="flex flex-col gap-4">
+          <Card className="w-full">
+            <CardContent className="p-2 md:p-4">
               <canvas 
                 ref={canvasRef} 
                 width={800} 
                 height={600} 
-                className="w-full border border-border rounded"
+                className="w-full border border-border rounded cursor-crosshair"
+                onClick={(e) => {
+                  const canvas = canvasRef.current;
+                  if (!canvas) return;
+                  
+                  const rect = canvas.getBoundingClientRect();
+                  const scaleX = 800 / rect.width;
+                  const scaleY = 600 / rect.height;
+                  const clickX = (e.clientX - rect.left) * scaleX;
+                  const clickY = (e.clientY - rect.top) * scaleY;
+                  
+                  const now = Date.now();
+                  const timeSinceLastClick = now - lastClickTime;
+                  
+                  if (timeSinceLastClick < 300) {
+                    handleBomb();
+                  } else {
+                    const angle = Math.atan2(clickY - playerY, clickX - playerX);
+                    const newBullet: Bullet = {
+                      id: now,
+                      x: playerX,
+                      y: playerY - 20,
+                      vx: Math.cos(angle) * 12,
+                      vy: Math.sin(angle) * 12,
+                    };
+                    setBullets(prev => [...prev, newBullet]);
+                  }
+                  
+                  setLastClickTime(now);
+                }}
               />
             </CardContent>
           </Card>
 
-          <Card className="lg:w-64">
+          <Card className="w-full">
             <CardHeader>
               <CardTitle className="pixel-font text-lg">Управление</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-2">Движение</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div></div>
-                  <Button onClick={() => handleMove(0, -30)} className="h-12">
-                    <Icon name="ArrowUp" />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="col-span-2 md:col-span-1">
+                  <p className="text-sm text-muted-foreground mb-2">Движение</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div></div>
+                    <Button onClick={() => handleMove(0, -30)} className="h-12 w-full">
+                      <Icon name="ArrowUp" />
+                    </Button>
+                    <div></div>
+                    <Button onClick={() => handleMove(-30, 0)} className="h-12 w-full">
+                      <Icon name="ArrowLeft" />
+                    </Button>
+                    <Button onClick={() => handleMove(0, 30)} className="h-12 w-full">
+                      <Icon name="ArrowDown" />
+                    </Button>
+                    <Button onClick={() => handleMove(30, 0)} className="h-12 w-full">
+                      <Icon name="ArrowRight" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground mb-2">Действия</p>
+                  <Button onClick={handleShoot} className="w-full h-12" variant="secondary">
+                    <Icon name="Target" className="mr-2" />
+                    Выстрел
                   </Button>
-                  <div></div>
-                  <Button onClick={() => handleMove(-30, 0)} className="h-12">
-                    <Icon name="ArrowLeft" />
-                  </Button>
-                  <Button onClick={() => handleMove(0, 30)} className="h-12">
-                    <Icon name="ArrowDown" />
-                  </Button>
-                  <Button onClick={() => handleMove(30, 0)} className="h-12">
-                    <Icon name="ArrowRight" />
+                  <Button 
+                    onClick={handleBomb} 
+                    className="w-full h-12" 
+                    variant="destructive"
+                    disabled={bombCooldown > 0}
+                  >
+                    <Icon name="Bomb" className="mr-2" />
+                    Бомба {bombCooldown > 0 && `${Math.ceil(bombCooldown / 1000)}с`}
                   </Button>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Button onClick={handleShoot} className="w-full" variant="secondary">
-                  <Icon name="Target" className="mr-2" />
-                  Выстрел
-                </Button>
-                <Button 
-                  onClick={handleBomb} 
-                  className="w-full" 
-                  variant="destructive"
-                  disabled={bombCooldown > 0}
-                >
-                  <Icon name="Bomb" className="mr-2" />
-                  Авиабомба {bombCooldown > 0 && `(${Math.ceil(bombCooldown / 1000)}с)`}
-                </Button>
-              </div>
-
-              <div className="pt-4 border-t">
-                <p className="text-xs text-muted-foreground mb-2">💡 Подсказка</p>
-                <p className="text-xs">• 1 клик - выстрел</p>
-                <p className="text-xs">• 2 клика - авиабомба</p>
-                <p className="text-xs">• Уничтожайте врагов!</p>
+                <div className="col-span-2 p-4 rounded-lg bg-muted">
+                  <p className="text-xs text-muted-foreground mb-2">💡 Подсказка</p>
+                  <p className="text-xs">• Нажми на экран для выстрела</p>
+                  <p className="text-xs">• Двойной клик - авиабомба (КД 5с)</p>
+                  <p className="text-xs">• Управление стрелками</p>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -55,9 +55,21 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Rubik", sans-serif;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .pixel-font {
     font-family: "Press Start 2P", cursive;
+  }
+
+  @media (max-width: 768px) {
+    html {
+      font-size: 14px;
+    }
+
+    canvas {
+      touch-action: none;
+    }
   }
 }

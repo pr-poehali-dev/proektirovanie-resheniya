@@ -49,12 +49,32 @@ export interface GameLobby {
   isActive: boolean;
 }
 
+export interface CustomBlock {
+  id: string;
+  type: 'link' | 'html' | 'image';
+  title: string;
+  content: string;
+  thumbnail?: string;
+  createdAt: number;
+}
+
 const STORAGE_KEYS = {
   USERS: 'wz_users',
   CURRENT_USER: 'wz_current_user',
   CHAT: 'wz_chat',
   LOBBIES: 'wz_lobbies',
   INVENTORY: 'wz_inventory',
+  CUSTOM_BLOCKS: 'wz_custom_blocks',
+};
+
+const hashPassword = (password: string): string => {
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
 };
 
 export const StorageService = {
@@ -92,7 +112,7 @@ export const StorageService = {
       id: Math.floor(Math.random() * 1000000).toString(),
       name,
       email,
-      password,
+      password: hashPassword(password),
       balance: 1000,
       donateBalance: 0,
       status: 'Новобранец',
@@ -112,7 +132,8 @@ export const StorageService = {
 
   login(email: string, password: string): User | null {
     const users = this.getUsers();
-    const user = users.find(u => u.email === email && u.password === password);
+    const hashedPassword = hashPassword(password);
+    const user = users.find(u => u.email === email && u.password === hashedPassword);
     
     if (user) {
       user.isOnline = true;
@@ -165,6 +186,27 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.LOBBIES, JSON.stringify(lobbies));
   },
 
+  getCustomBlocks(): CustomBlock[] {
+    const data = localStorage.getItem(STORAGE_KEYS.CUSTOM_BLOCKS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveCustomBlocks(blocks: CustomBlock[]): void {
+    localStorage.setItem(STORAGE_KEYS.CUSTOM_BLOCKS, JSON.stringify(blocks));
+  },
+
+  addCustomBlock(block: CustomBlock): void {
+    const blocks = this.getCustomBlocks();
+    blocks.push(block);
+    this.saveCustomBlocks(blocks);
+  },
+
+  deleteCustomBlock(blockId: string): void {
+    const blocks = this.getCustomBlocks();
+    const filtered = blocks.filter(b => b.id !== blockId);
+    this.saveCustomBlocks(filtered);
+  },
+
   initAdminUser(): void {
     const users = this.getUsers();
     const adminExists = users.find(u => u.email === 'plutka');
@@ -174,7 +216,7 @@ export const StorageService = {
         id: 'dev',
         name: 'Admin',
         email: 'plutka',
-        password: 'user',
+        password: hashPassword('user'),
         balance: 999999,
         donateBalance: 999999,
         status: 'Administrator 👑',
